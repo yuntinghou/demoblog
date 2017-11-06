@@ -9,6 +9,8 @@ var flash = require('connect-flash');
 var config = require('config-lite')(__dirname);
 var routes = require('./routes');
 var pkg = require('./package');
+var winston = require('winston');
+var expressWinston = require('express-winston');
 
 var app = express();
 app.set('views', path.join(__dirname, 'views'));
@@ -47,8 +49,31 @@ app.use(function(req, res, next) {
    res.locals.error = req.flash('error').toString();
    next();
 });
+app.use(expressWinston.logger({
+    transports: [
+        new(winston.transports.Console)({
+            json: true,
+            colorize: true
+        }),
+        new winston.transports.File({
+            filename: 'logs/success.log'
+        })
+    ]
+}));
 
 routes(app);
+
+app.use(expressWinston.errorLogger({
+    transports:[
+        new winston.transports.Console({
+            json: true,
+            colorize: true
+        }),
+        new winston.transports.File({
+            filename: 'logs/errors.log'
+        })
+    ]
+}));
 app.use(function (err, req, res, next) {
     res.render('error', {
         error: err
