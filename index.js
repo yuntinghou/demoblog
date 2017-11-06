@@ -30,7 +30,10 @@ app.use(session({
 }));
 
 app.use(flash());
-
+app.use(require('express-formidable')({
+    uploadDir: path.join(__dirname, 'public/img'),
+    keepExtensions: true
+}));
 // Set Global Variables
 
 app.locals.blog = {
@@ -40,7 +43,7 @@ app.locals.blog = {
 
 app.use(function(req, res, next) {
    res.locals.user = req.session.user;
-   res.locals.sucess = req.flash('success').toString();
+   res.locals.success = req.flash('success').toString();
    res.locals.error = req.flash('error').toString();
    next();
 });

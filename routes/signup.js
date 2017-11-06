@@ -3,17 +3,76 @@
  */
 var express = require('express');
 var router = express.Router();
+var fs = require('fs');
+var path = require('path');
+var sha1 = require('sha1');
 
+var UserModel = require('../models/users');
 var checkNotLogin = require('../middlewares/check').checkNotLogin;
 
 // GET SignUp page
 router.get('/', checkNotLogin, function(req, res, next) {
-    return res.send(req.flash());
+    return res.render('signup')
 });
 
 // POST Singup request
 router.post('/', checkNotLogin, function(req, res, next) {
-    return res.send(req.flash());
+    var name = req.fields.name;
+    var gender = req.fields.gender;
+    var bio = req.fields.bio;
+    var avatar = req.files.avatar.path.split(path.sep).pop();
+    var password = req.fields.password;
+    var repassword = req.fields.repassword;
+
+    try {
+        if (!(name.length >= 1 && name.length <= 10)) {
+            throw new Error('Username must be between 1 and 10.');
+        }
+        if (['m', 'f', 'x'].indexOf(gender) < 0) {
+            throw new Error('Gender is only m, f or x.');
+        }
+        if (!(bio.length >= 1 && bio.length <= 300)) {
+            throw new Error('Bio must be between 1 and 300.');
+        }
+        if (!req.files.avatar.name) {
+            throw new Error('Lack profile.')
+        }
+        if (password.length < 6){
+            throw new Error('Password must be equal or greater than 6.');
+        }
+        if (password != repassword) {
+            throw new Error('Password not match.')
+        }
+    } catch(e) {
+        fs.unlink(req.files.avatar.path);
+        req.flash('error', e.message);
+        return res.redirect('/signup');
+    }
+
+    password = sha1(password);
+    var user = {
+        name: name,
+        password: password,
+        gender: gender,
+        bio: bio,
+        avatar: avatar
+    };
+    UserModel.create(user)
+        .then(function(result){
+            user = result.ops[0];
+            delete user.password;
+            req.session.user = user;
+            req.flash('success', 'Signed up.');
+            res.redirect('/posts');
+        })
+        .catch(function(e) {
+            fs.unlink(req.files.avatar.path);
+            if (e.message.match('E11000 duplicate key')) {
+                req.flash('error', 'The username is taken.');
+                return res.redirect('/signup');
+            }
+            next(e);
+        })
 });
 
 module.exports = router;
