@@ -1,3 +1,5 @@
 <%- include header.ejs%>
-Main page
-<%- include footer.ejs%>
+<% posts.forEach(function(post) { %>
+    <%- include('components/post-content', {post: post}) %>
+<% }) %>
+<%- include footer.ejs %>

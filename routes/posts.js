@@ -6,7 +6,14 @@ var PostModel = require('../models/posts');
 // GET /posts The articles from all the users
 // eg: GET /posts?author=xxx
 router.get('/', function(req, res, next) {
-    res.render('posts');
+    var author = req.query.author;
+    PostModel.getPosts(author)
+        .then(function (posts) {
+            res.render('posts', {
+                posts: posts
+            });
+        })
+        .catch(next);
 });
 
 // POST /posts Publish an article
@@ -48,22 +55,67 @@ router.get('/create', checkLogin, function(req, res, next) {
 
 // GET /posts/:postId Single page of article
 router.get('/:postId', function(req, res, next) {
-    res.send(req.flash());
+    var postId = req.params.postId;
+    Promise.all([
+            PostModel.getPostById(postId),
+            PostModel.incPv(postId)
+        ])
+        .then(function(result) {
+            var post = result[0];
+            if (!post) {
+                throw new Error('Article not exist.');
+            }
+            res.render('post', {
+                post: post
+            });
+        })
+        .catch(next);
 });
 
 // GET /posts/:postId/edit Update an article
 router.get('/:postId/edit', checkLogin, function(req, res, next) {
-    res.send(req.flash());
+    var postId = req.params.postId;
+    var author = req.session.user._id;
+    PostModel.getRawPostById(postId)
+        .then(function(post) {
+            if (!post) {
+                throw new Error('Article not exist');
+            }
+            if (author.toString() !== post.author._id.toString()) {
+                throw new Error('No enough permission')
+            }
+            res.render('edit', {
+                post: post
+            });
+        })
+        .catch(next);
 });
 
 // POST /posts/:postId/edit Upload an article
 router.post('/:postId/edit', checkLogin, function(req, res, next) {
-    res.send(req.flash());
+    var postId = req.params.postId;
+    var author = req.session.user._id;
+    var title = req.fields.title;
+    var content = req.fields.content;
+
+    PostModel.updatePostById(postId, author, {title: title, content: content})
+        .then(function() {
+            req.flash('success', 'Updated');
+            res.redirect('/posts/' + postId);
+        })
+        .catch(next);
 });
 
 // GET /posts/:postId/remove Remove an article
 router.get('/:postId/remove', checkLogin, function(req, res, next) {
-    res.send(req.flash());
+    var postId = req.params.postId;
+    var author = req.session.user._id;
+    PostModel.delPostById(postId, author)
+        .then(function() {
+            req.flash('success', 'Removed');
+            res.redirect('/posts');
+        })
+        .catch(next);
 });
 
 // GET /posts/:postId/comment Create a comment
