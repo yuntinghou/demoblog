@@ -4,6 +4,7 @@ module.exports = {
             req.flash('error', 'Not logged in');
             return res.redirect('/signin');
         }
+        next();
     },
     checkNotLogin: function checkNotLogin(req, res, next) {
         if (req.session.user) {

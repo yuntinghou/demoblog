@@ -3,12 +3,13 @@
  */
 var express = require('express');
 var router = express.Router();
-
-var checkNotLogin = require('../middlewares/check').checkNotLogin;
+var checkLogin = require('../middlewares/check').checkLogin;
 
 //GET /signout
-router.get('/', checkNotLogin, function(req, res, next) {
-    return res.send(req.flash());
+router.get('/', checkLogin, function(req, res, next) {
+    req.session.user = null;
+    req.flash('success', 'Singed Out.');
+    return res.redirect('/posts');
 });
 
 module.exports = router;
