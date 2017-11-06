@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 var checkLogin = require('../middlewares/check').checkLogin;
 var PostModel = require('../models/posts');
+var CommentModel = require('../models/comments');
 
 // GET /posts The articles from all the users
 // eg: GET /posts?author=xxx
@@ -58,15 +59,18 @@ router.get('/:postId', function(req, res, next) {
     var postId = req.params.postId;
     Promise.all([
             PostModel.getPostById(postId),
+            CommentModel.getComments(postId),
             PostModel.incPv(postId)
         ])
         .then(function(result) {
             var post = result[0];
+            var comments = result[1];
             if (!post) {
                 throw new Error('Article not exist.');
             }
             res.render('post', {
-                post: post
+                post: post,
+                comments: comments
             });
         })
         .catch(next);
@@ -120,17 +124,38 @@ router.get('/:postId/remove', checkLogin, function(req, res, next) {
 
 // GET /posts/:postId/comment Create a comment
 router.get('/:postId/comment', checkLogin, function(req, res, next) {
-    res.send(req.flash());
+
 });
 
 // POST /posts/:postId/comment Post a comment
 router.post('/:postId/comment', checkLogin, function(req, res, next) {
-    res.send(req.flash());
+    var author = req.session.user._id;
+    var postId = req.params.postId;
+    var content = req.fields.content;
+    var comment = {
+        author: author,
+        postId: postId,
+        content: content
+    };
+    CommentModel.create(comment)
+        .then(function() {
+            req.flash('success', 'Comment posted');
+            res.redirect('back');
+        })
+        .catch(next);
 });
 
 // GET /posts/:postId/comment/:commentId/remove remove a comment
 router.get('/:postId/comment/:commentId/remove', checkLogin, function(req, res, next){
-    res.send(req.flash());
+    var commentId = req.params.commentId;
+    var author = req.session.user._id;
+
+    CommentModel.delCommentById(commentId, author)
+        .then(function() {
+            req.flash('success', 'Comment removed');
+            res.redirect('back');
+        })
+        .catch(next);
 });
 
 module.exports = router;
